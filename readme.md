@@ -1,5 +1,8 @@
 # AlphaSampler
 
+![img 1](https://github.com/EdwardDali/alpha/blob/main/docs/flow1.PNG)
+![img_2](https://github.com/EdwardDali/alpha/blob/main/docs/parameters.PNG)
+
 AlphaSampler is an advanced text generation sampling system that implements a novel approach combining thermodynamic sampling principles with speculative decoding. It dynamically adapts sampling parameters based on the model's uncertainty levels and attention coherence patterns to produce higher quality text generation.
 
 ## Core Concept
