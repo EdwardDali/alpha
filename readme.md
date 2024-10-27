@@ -219,10 +219,4 @@ pip install torch --extra-index-url https://download.pytorch.org/whl/cu118
    - Memory usage vs. history length
    - Precision vs. creativity balance
 
-## License
 
-This project is available under the MIT License. See LICENSE file for details.
-
-## Contributing
-
-Contributions are welcome! Please read our contributing guidelines and submit pull requests for any improvements.
