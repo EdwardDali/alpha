@@ -23,9 +23,9 @@ class SamplerState(Enum):
 class SamplerConfig:
     def __init__(self, tokenizer=None):  # Accept tokenizer parameter but don't use it
         # Base parameters
-        self.base_temp = 0.4
+        self.base_temp = 0.5
         self.base_top_p = 0.85
-        self.base_top_k = 40
+        self.base_top_k = 30
         self.base_rep_penalty = 1.0
         
         # Phase transition points
@@ -33,7 +33,7 @@ class SamplerConfig:
         self.HOT_POINT = 1.8
         
         # Speculative decoding parameters
-        self.spec_top_k = 3
+        self.spec_top_k = 10
         self.spec_top_p = 0.9
         self.entropy_weight = 0.8
         self.var_entropy_weight = 0.2
@@ -41,7 +41,7 @@ class SamplerConfig:
 class AdaptiveEntropixSampler:
     def __init__(self, config: SamplerConfig):
         self.config = config
-        self.alpha_window = deque(maxlen=100)
+        self.alpha_window = deque(maxlen=1)
         logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger(__name__)
 
@@ -67,12 +67,12 @@ class AdaptiveEntropixSampler:
         
         # Attention Coherence
         if len(attention.shape) == 4:
-            attention = attention.mean(dim=1)
+            attention = attention.mean(dim=1)  # Average over attention heads
         elif len(attention.shape) == 3:
             attention = attention.unsqueeze(0)
         
-        attention_probs = F.softmax(attention, dim=-1)
-        attn_entropy = self.calculate_entropy(attention_probs)
+        # Directly use the attention scores which are already normalized
+        attn_entropy = self.calculate_entropy(attention)
         norm_attn_entropy = attn_entropy.mean().item()
         
         # Combined metrics
