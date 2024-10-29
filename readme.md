@@ -89,7 +89,7 @@ Main sampling class with the following key methods:
 | Parameter | Min | Max | Description |
 |-----------|-----|-----|-------------|
 | Temperature | 0.1 | 1.0 | Controls randomness |
-| Top-K | 5 | 200 | Number of top tokens to consider |
+| Top-K | 5 | 100 | Number of top tokens to consider |
 | Top-P | 0.1 | 1.0 | Cumulative probability threshold |
 | Repetition Penalty | 1.1 | 1.5 | Penalty for repeated tokens |
 | Candidate Size | 1 | 100 | Final pool of candidates |
@@ -113,7 +113,7 @@ flowchart TD
             direction TB
             Alpha --> Params[Optimize Parameters]
             Params --> P1[Temperature: 0.1-1.0]
-            Params --> P2[Top K: 5-200]
+            Params --> P2[Top K: 5-100]
             Params --> P3[Top P: 0.1-1.0]
             Params --> P4[Rep Penalty: 1.1-1.5]
             Params --> P5[Candidate Size: 1-100]
