@@ -3,220 +3,146 @@
 ![img 1](https://github.com/EdwardDali/alpha/blob/main/docs/flow1.PNG)
 
 
-AlphaSampler is an advanced text generation sampling system that implements a novel approach combining thermodynamic sampling principles with speculative decoding. It dynamically adapts sampling parameters based on the model's uncertainty levels and attention coherence patterns to produce higher quality text generation.
+is an advanced text generation sampling system that dynamically optimizes sampling parameters based on entropy and attention patterns. It provides more controlled and context-aware text generation by adaptively adjusting sampling parameters during the generation process.
 
-## Core Concept
+## Features
 
-The system operates on the principle that language model uncertainty can be quantified and used to optimize the sampling strategy. It does this by:
+- **Dynamic Parameter Optimization**: Automatically adjusts temperature, top-k, top-p, repetition penalty, and candidate size based on context
+- **Entropy-Based Analysis**: Utilizes both token distribution and attention pattern entropy
+- **Moving Average Window**: Maintains stability through alpha value smoothing
+- **Comprehensive Error Handling**: Robust error checking and logging throughout the pipeline
+- **Compatible with Hugging Face Models**: Works with AutoModelForCausalLM models
 
-1. Analyzing token distribution entropy
-2. Evaluating attention pattern coherence
-3. Combining these metrics to determine the system's thermodynamic state
-4. Adaptively adjusting sampling parameters based on the current state
-
-## Technical Architecture
-
-### 1. Uncertainty Quantification
-
-The system uses two primary metrics to quantify uncertainty:
-
-#### Token Distribution Entropy
-```python
-token_entropy = -Σ(p_i * log_2(p_i))
-```
-- Calculated from the logits of the next token distribution
-- Normalized by maximum possible entropy
-- Indicates how "confident" the model is in its next token predictions
-
-#### Attention Coherence
-```python
-attention_entropy = -Σ(a_i * log_2(a_i))
-```
-- Derived from the model's attention patterns
-- Measures how focused vs. dispersed the model's attention is
-- Higher values indicate more uncertain or complex relationships
-
-### 2. Thermodynamic States
-
-The system operates in three distinct states:
-
-#### COLD State (α < 0.6)
-- High model certainty
-- Uses speculative decoding
-- Narrow sampling distribution
-- Parameters:
-  - Low temperature (≈ 0.1-0.3)
-  - Low top-k (10-30)
-  - High precision sampling
-
-#### HOT State (α > 1.8)
-- High uncertainty
-- Broader sampling distribution
-- Parameters:
-  - High temperature (≈ 0.8-1.3)
-  - High top-k (150-200)
-  - More exploratory sampling
-
-#### MIXED State (0.6 ≤ α ≤ 1.8)
-- Intermediate uncertainty
-- Balanced parameter settings
-- Parameters:
-  - Moderate temperature (≈ 0.4-0.7)
-  - Medium top-k (40-150)
-  - Balanced sampling approach
-
-### 3. Adaptive Parameter Calculation
-
-Each sampling parameter is calculated using specialized functions:
-
-#### Temperature
-```python
-temperature = 0.1 + 1.2 / (1 + exp(-1.5 * (α - 1.0)))
-```
-- Ranges from 0.1 to 1.3
-- Sigmoid curve centered at α = 1.0
-- Steeper transition in the MIXED state
-
-#### Top-k
-```python
-top_k = 10 + 190 * (arctan(α - 1.0) / π + 0.5)
-```
-- Ranges from 10 to 200
-- Uses arctangent function for smooth transitions
-- Centered around α = 1.0
-
-#### Top-p
-```python
-top_p = 0.85 + 0.1 * (2 / (1 + exp(-0.8 * α)) - 1)
-```
-- Ranges from 0.85 to 0.95
-- Sigmoid-based scaling
-- More conservative than traditional top-p
-
-#### Repetition Penalty
-```python
-rep_penalty = 1.0 + 0.3 / (1 + exp(-2 * (α - 1.0)))
-```
-- Ranges from 1.0 to 1.3
-- Stronger penalty in high uncertainty states
-- Applies to previous 128 tokens
-
-### 4. Speculative Decoding
-
-In COLD states, the system implements speculative decoding:
-
-1. Selects top-k candidate tokens
-2. For each candidate:
-   - Generates next token probability distribution
-   - Calculates attention entropy
-   - Computes variance in attention patterns
-3. Scores candidates using:
-   ```python
-   score = entropy_weight * avg_entropy + var_entropy_weight * avg_varentropy
-   ```
-4. Selects token minimizing the score
-
-## Implementation Details
-
-### Main Components
-
-#### SamplerConfig
-```python
-class SamplerConfig:
-    def __init__(self):
-        self.base_temp = 0.4
-        self.base_top_p = 0.85
-        self.base_top_k = 40
-        self.base_rep_penalty = 1.0
-        self.COLD_POINT = 0.6
-        self.HOT_POINT = 1.8
-```
-
-#### AdaptiveEntropixSampler
-Core class implementing:
-- Entropy calculations
-- State determination
-- Parameter adaptation
-- Sampling logic
-- Speculative decoding
-
-### Usage Example
+## Requirements
 
 ```python
-# Initialize
-config = SamplerConfig()
-sampler = AdaptiveEntropixSampler(config)
-
-# Load model
-model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen2.5-0.5B-Instruct")
-tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-0.5B-Instruct")
-
-# Generate text
-def generate_response(prompt, max_tokens=500):
-    input_ids = tokenizer.encode(prompt, return_tensors="pt")
-    
-    for _ in range(max_tokens):
-        outputs = model(input_ids=input_ids, output_attentions=True)
-        sampled_token, params = sampler.sample(
-            outputs.logits,
-            outputs.attentions[-1],
-            input_ids
-        )
-        input_ids = torch.cat([input_ids, sampled_token], dim=1)
-    
-    return tokenizer.decode(input_ids[0])
+torch
+transformers
+logging
+typing
 ```
-
-## Performance Optimization
-
-### Memory Management
-- Uses rolling window for alpha history (100 tokens)
-- Limits attention analysis to last layer
-- Implements efficient tensor operations
-
-### Computational Efficiency
-- Caches intermediate calculations
-- Vectorized operations for entropy calculation
-- Optimized repetition penalty application
-
-## System Requirements
-
-### Hardware
-- CUDA-capable GPU recommended
-- Minimum 8GB GPU memory for base models
-- 16GB+ recommended for larger models
-
-### Software
-- Python 3.7+
-- PyTorch 2.0+
-- Transformers library
-- CUDA toolkit (for GPU support)
 
 ## Installation
 
+1. Clone the repository
+2. Install dependencies:
 ```bash
-# Basic installation
 pip install torch transformers
-
-# For CUDA support
-pip install torch --extra-index-url https://download.pytorch.org/whl/cu118
 ```
 
-## Limitations and Considerations
+## Quick Start
 
-1. Computational Overhead
-   - Speculative decoding increases computation time
-   - Multiple forward passes in COLD state
-   - Memory usage scales with sequence length
+```python
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from alpha import generate_response
 
-2. Model Compatibility
-   - Requires attention pattern output
-   - Works best with transformer-based models
-   - May need parameter tuning for different model sizes
+# Initialize model and tokenizer
+model_name = "Qwen/Qwen2.5-0.5B-Instruct"
+model = AutoModelForCausalLM.from_pretrained(model_name, output_attentions=True)
+tokenizer = AutoTokenizer.from_pretrained(model_name)
 
-3. Performance Tradeoffs
-   - Speed vs. quality tradeoff in speculative decoding
-   - Memory usage vs. history length
-   - Precision vs. creativity balance
+# Generate text
+prompt = "Your prompt here"
+response = generate_response(model, tokenizer, prompt)
+print(response)
+```
 
+## Core Components
+
+### SamplerConfig
+
+Configuration class that defines:
+- Base parameters for sampling
+- Parameter bounds
+- Optimization settings
+- Smoothing factors
+
+```python
+cfg = SamplerConfig()
+cfg.base_temp = 0.2
+cfg.base_top_p = 0.80
+# ... other configurations
+```
+
+### AdaptiveEntropixSampler
+
+Main sampling class with the following key methods:
+
+1. `calculate_alpha`: Computes the adaptive scaling factor using:
+   - Token distribution entropy
+   - Token distribution varentropy
+   - Attention pattern entropy
+   - Attention pattern varentropy
+
+2. `find_optimal_parameters`: Optimizes sampling parameters based on:
+   - Current alpha value
+   - Parameter bounds
+   - Gradient-based optimization
+
+3. `sample`: Main sampling method that:
+   - Applies all optimized parameters
+   - Handles repetition penalty
+   - Generates next token probabilities
+
+## Parameter Ranges
+
+| Parameter | Min | Max | Description |
+|-----------|-----|-----|-------------|
+| Temperature | 0.1 | 1.0 | Controls randomness |
+| Top-K | 5 | 200 | Number of top tokens to consider |
+| Top-P | 0.1 | 1.0 | Cumulative probability threshold |
+| Repetition Penalty | 1.1 | 1.5 | Penalty for repeated tokens |
+| Candidate Size | 1 | 100 | Final pool of candidates |
+
+## Generation Flow
+
+```mermaid
+flowchart TD
+    Start[User Prompt] --> Tokenize[Tokenize Input]
+    Tokenize --> Loop[Token Generation Loop]
+    
+    subgraph Loop[Token Generation Loop]
+        direction TB
+        subgraph EntropyCalc[Alpha Calculation]
+            E1[Calculate Token Distribution Entropy & Varentropy]
+            E2[Calculate Attention Pattern Entropy & Varentropy]
+            E1 & E2 --> Alpha[Compute Combined Alpha]
+        end
+
+        subgraph Optimization[Parameter Optimization]
+            direction TB
+            Alpha --> Params[Optimize Parameters]
+            Params --> P1[Temperature: 0.1-1.0]
+            Params --> P2[Top K: 5-200]
+            Params --> P3[Top P: 0.1-1.0]
+            Params --> P4[Rep Penalty: 1.1-1.5]
+            Params --> P5[Candidate Size: 1-100]
+        end
+
+        EntropyCalc --> Optimization
+        Optimization --> Sample[Sample Token from Distribution]
+        Sample --> RepPenalty[Apply Repetition Penalty]
+        RepPenalty --> Generate[Generate Next Token]
+        Generate --> |Next Token| EntropyCalc
+    end
+
+    Generate --> |EOS Token| End[Complete Response]
+```
+
+## Error Handling
+
+The system includes comprehensive error handling:
+- Input validation
+- Tensor shape verification
+- Parameter bound checking
+- Logging at multiple levels
+- Graceful fallbacks
+
+## Logging
+
+The system uses Python's built-in logging module with configurable levels:
+```python
+logging.basicConfig(level=logging.INFO,
+                   format='%(asctime)s - %(levelname)s - %(message)s')
+```
 
